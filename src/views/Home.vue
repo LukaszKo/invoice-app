@@ -13,31 +13,31 @@
                 :sm="24"
                 :md="12"
               >
-                <h3>Form</h3>
+                <h3>Formularz</h3>
                 <el-form
                   label-position="left"
                   label-width="100px"
                   :model="formModel"
                 >
-                  <el-form-item label="month">
+                  <el-form-item label="Miesiąc">
                     <el-select
                       v-model="monthModel"
-                      placeholder="Select"
+                      placeholder="wybierz"
                       @change="onChange"
                     >
                       <el-option
                         v-for="item in options"
                         :key="item.id"
                         :label="item.value"
-                        :value="item.id"
+                        :value="item"
                       >
                       </el-option>
                     </el-select>
                   </el-form-item>
-                  <el-form-item label="day">
+                  <el-form-item label="Dzień">
                     <el-select
                       v-model="dayModel"
-                      placeholder="Select"
+                      placeholder="wybierz"
                     >
                       <el-option
                         v-for="item in days"
@@ -48,59 +48,65 @@
                       </el-option>
                     </el-select>
                   </el-form-item>
-                  <el-form-item label="kilometers">
+                  <el-form-item label="Kilometry">
                     <el-input
                       type="number"
                       v-model="formModel.km"
                     ></el-input>
                   </el-form-item>
-                  <el-form-item label="address">
+                  <el-form-item label="Adres">
                     <el-input v-model="formModel.addressTo"></el-input>
                   </el-form-item>
+                  <div class="form-buttons">
+                    <el-button @click="clearForm">
+                      Wyczyść
+                    </el-button>
+                    <el-button
+                      type="success"
+                      @click="addItem"
+                    >Dodaj dzień</el-button>
+                  </div>
                 </el-form>
               </el-col>
               <el-col
                 :sm="24"
                 :md="12"
               >
-                <h3>Total</h3>
+                <h3>Podsumowanie</h3>
                 <el-form
                   label-position="left"
                   label-width="100px"
                 >
-                  <el-form-item label="Kilometers">
+                  <el-form-item
+                    label="Kilometry"
+                    class="align-left"
+                  >
                     <span>{{getAllKm}}</span>
                   </el-form-item>
-                  <el-form-item label="Rate">
+                  <el-form-item label="Stawka">
                     <el-input
                       type="number"
                       v-model="rate"
                     ></el-input>
                   </el-form-item>
-                  <el-form-item label="Result">
+                  <el-form-item
+                    label="Kwota"
+                    class="align-left"
+                  >
                     <span>{{getResult}}</span>
                   </el-form-item>
+                  <el-form-item label="Nazwa pliku">
+                    <el-input v-model="fileName"></el-input>
+                  </el-form-item>
+                  <div class="form-buttons">
+                    <el-button
+                      :disabled="!tableData.length"
+                      type="primary"
+                      @click="downoloadPdf"
+                    >Pobierz PDF</el-button>
+                  </div>
                 </el-form>
               </el-col>
-            </el-row>
-            <el-row
-              type="flex"
-              justify="end"
-            >
-              <div>
-                <el-button @click="clearForm">
-                  Clear
-                </el-button>
-                <el-button
-                  type="success"
-                  @click="addItem"
-                >Add Day</el-button>
-                <el-button
-                  :disabled="!tableData.length"
-                  type="primary"
-                  @click="downoloadPdf"
-                >Download PDF</el-button>
-              </div>
             </el-row>
           </el-card>
         </div>
@@ -109,40 +115,55 @@
     <el-row
       type="flex"
       justify="center"
+      class="table-container"
     >
       <el-col :span="16">
         <div>
           <el-table
             :data="tableData"
+            empty-text="Brak danych"
             style="width: 100%"
           >
             <el-table-column
               prop="week"
-              label="Week"
+              label="Nr tyg"
               width="180"
             >
             </el-table-column>
             <el-table-column
               prop="date"
-              label="Datum"
+              label="Data"
               width="180"
             >
             </el-table-column>
             <el-table-column
               prop="km"
-              label="Kilometers"
+              label="Kilometry"
               width="180"
             >
             </el-table-column>
             <el-table-column
               prop="addressFrom"
-              label="Vertrekadres"
+              label="Twój adres"
             >
             </el-table-column>
             <el-table-column
               prop="addressTo"
-              label="Aankomstadres"
+              label="Adres wyjazdu"
             >
+            </el-table-column>
+            <el-table-column
+              fixed="right"
+              label="Akcje"
+              width="120"
+            >
+              <template v-slot="{$index}">
+                <el-button
+                  type="text"
+                  size="small"
+                  @click="removeRow($index)"
+                >Usuń</el-button>
+              </template>
             </el-table-column>
           </el-table>
         </div>
@@ -173,26 +194,31 @@ import { Component, Vue } from "vue-property-decorator";
 import moment from 'moment';
 import * as jsPDF from "jspdf";
 import 'jspdf-autotable';
+moment.locale('nl');
 
 @Component({
   components: {
-  }
+  },
 })
 export default class Home extends Vue {
 
 
   ADDRESS: string = '3362GG Sliedrecht';
-  PDF_HEAD: Array<Array<string>> = [["Week", "Datum", "Kilometers", "Vertrekadres", "Aankomstadres"]];
+  EURO_SIGN: string = "\u20ac";
+  PDF_EXTENSION: string = '.pdf';
+  PDF_HEAD: Array<Array<string>> = [["Weeknummer", "Datum", "Kilometers", "Vertrekadres", "Aankomstadres"]];
   formModel: Object = { date: '', km: '', week: '', addressFrom: this.ADDRESS, addressTo: '' };
   days: Array<any> = [];
   monthModel: string = '';
-  options: Array<Object> = moment.months().map((date, index) => ({ id: index, value: date }));
+  options: Array<Object> = moment.months().map((date, index) => ({ id: index, value: this.capitalize(date) }));
   data: Array<any> = [];
   tableData: Array<any> = [];
   dayModel: any = '';
   daysMap: any = {};
   rate: number = 0.19;
   result: number = 0;
+  chosenMonth: string = '';
+  fileName: string = 'plik';
 
   get getDays() {
     return this.days;
@@ -211,11 +237,12 @@ export default class Home extends Vue {
   }
 
   get getResult() {
-    return (this.getAllKm * this.rate).toFixed(2);
+    return this.EURO_SIGN + (this.getAllKm * this.rate).toFixed(2);
   }
 
-  onChange(val: any) {
-    this.daysMap = this.createDays(val);
+  onChange(item: any) {
+    this.chosenMonth = item.value;
+    this.daysMap = this.createDays(item.id);
   }
 
   createDays(month: number): any {
@@ -229,7 +256,7 @@ export default class Home extends Vue {
       let stringDay = moment.weekdays(i);
       if (!days[weekNumber]) days[weekNumber] = [];
       days[weekNumber].push(`${stringDay}, ${stringDate}`);
-      this.days.push({ value: `${stringDay}, ${stringDate}`, week: weekNumber });
+      this.days.push({ value: `${this.capitalize(stringDay)}, ${stringDate}`, week: weekNumber });
     }
     return days;
   }
@@ -251,22 +278,36 @@ export default class Home extends Vue {
   createPdfContent() {
     this.data = [];
     this.days.map(day => {
-      let arr = [];
-      arr.push(day.week);
-      const item = this.tableData.find(el => el.date === day.value);
-      if (item) {
-        arr.push(item.date);
-        arr.push(item.km);
-        arr.push(item.addressFrom);
-        arr.push(item.addressTo);
+      const list = this.tableData.filter(el => el.date === day.value);
+      if (list.length) {
+        list.map(item => {
+          let arr = [];
+          arr.push(day.week);
+          arr.push(item.date);
+          arr.push(item.km);
+          arr.push(item.addressFrom);
+          arr.push(item.addressTo);
+          this.data.push([...arr]);
+        })
       } else {
+        let arr = [];
+        arr.push(day.week);
         arr.push(day.value);
         arr.push('');
         arr.push(this.ADDRESS);
         arr.push('');
+        this.data.push([...arr]);
       }
-      this.data.push([...arr]);
+
     });
+  }
+
+  capitalize(value: string) {
+    return value.charAt(0).toUpperCase() + value.slice(1)
+  };
+
+  removeRow(index) {
+    this.tableData.splice(index, 1);
   }
 
   downoloadPdf() {
@@ -276,12 +317,12 @@ export default class Home extends Vue {
     let id = document.querySelector('#pdfHtml');
     let editor = document.querySelector('#editor');
     doc.fromHTML(id, 14, 10, {});
-    doc.text('Periode: Mei 2019', 150, 10);
+    doc.text(`Periode: ${this.chosenMonth} ${moment().year()}`, 150, 10);
     doc.fromHTML(editor, 14, 40, { bottom: 50 });
     doc.autoTable({ showHead: 'firstPage', startY: 80, head: this.PDF_HEAD, body: this.data });
-    doc.autoTable({ head: [['Kilometers', 'Rate', 'Result']], body: [[this.getAllKm, this.rate, this.getResult]] })
+    doc.autoTable({ head: [['Kilometers', 'Tarief', 'Bedrag']], body: [[this.getAllKm, this.EURO_SIGN + this.rate, this.getResult]] })
     doc.output("dataurlnewwindow");
-    // doc.save('test.pdf');
+    // doc.save(this.fileName + this.PDF_EXTENSION);
   }
 }
 </script>
@@ -293,5 +334,18 @@ export default class Home extends Vue {
 
 .el-select {
   width: 100%;
+}
+
+.align-left {
+  text-align: left;
+}
+
+.form-buttons {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.table-container {
+  margin: 30px 0;
 }
 </style>
