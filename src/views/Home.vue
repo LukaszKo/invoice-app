@@ -321,8 +321,8 @@ export default class Home extends Vue {
     doc.fromHTML(editor, 14, 40, { bottom: 50 });
     doc.autoTable({ showHead: 'firstPage', startY: 80, head: this.PDF_HEAD, body: this.data });
     doc.autoTable({ head: [['Kilometers', 'Tarief', 'Bedrag']], body: [[this.getAllKm, this.EURO_SIGN + this.rate, this.getResult]] })
-    doc.output("dataurlnewwindow");
-    // doc.save(this.fileName + this.PDF_EXTENSION);
+    // doc.output("dataurlnewwindow");
+    doc.save(this.fileName + this.PDF_EXTENSION);
   }
 }
 </script>
